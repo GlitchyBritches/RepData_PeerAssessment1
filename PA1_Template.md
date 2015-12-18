@@ -1,8 +1,3 @@
----
-output: 
-  html_document: 
-    keep_md: yes
----
 =======  
 + Title: Reproducible Research Project 1 Results  
 + Name of Author: Michael Turner  
@@ -33,7 +28,8 @@ We overview these analyses in the following format
 
 The data.table, dplyr, lubridate, and ggplot2 libraries are loaded in order to provide data manipulation & plotting functionality
 
-```{r, message=FALSE, warning=FALSE}
+
+```r
 library("data.table")
 library("dplyr")
 library("lubridate")
@@ -42,7 +38,8 @@ library("ggplot2")
 
 The data (found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip])) is then loaded and coerced into a data table (as defined by the data.table library)
 
-```{r}
+
+```r
 rawData <- read.csv("activity.csv", colClasses = c("numeric", "character", "integer"))
 rawData <- data.table(rawData)
 ```
@@ -56,21 +53,31 @@ In this analysis, we calculate the number of steps taken per day by the individu
 ### Data Preperation 
 
 Firstly, a dplyr chain with the summarize function at the end of the chain is used to sum the number of steps each day  and output it into a new data table that will be used for plotting a histogram
-```{r}
+
+```r
 stepsPerDay <- summarize(group_by(filter(rawData, !is.na(steps)), date), steps = sum(steps))
 ```
 
 
 ### Analysis Methods and Results
 ggplot2 is used to plot a histogram of the steps per day
-```{r}
+
+```r
 ggplot(stepsPerDay, aes(x=steps)) + geom_histogram(col="red", binwidth=1000) +  labs(title = "Steps per day", x = "Steps (Binwidth = 1000 steps)", y = "Count")
 ```
 
+![](PA1_Template_files/figure-html/unnamed-chunk-4-1.png) 
+
 The mean and median of the sample is then stored in a table meant for storing summary statistics
-```{r}
+
+```r
 stepStatistics <- data.table(mean = mean(stepsPerDay$steps), median = median(stepsPerDay$steps), NAValueMethod = "Removed")
 stepStatistics
+```
+
+```
+##        mean median NAValueMethod
+## 1: 10766.19  10765       Removed
 ```
 
 The histogram from sample of this individual shows a distribution with a seemingly centralized kurtosis, with the expected value (mean) and median of the sample lying right around 10765 steps per day (calculated with the code below).  10000 steps for most adults is approximately 5 miles, so we can guess that this individual is slightly more active than the average adult.
@@ -83,19 +90,32 @@ In this analysis, we average the number of steps per interval and plot it to see
 
 ### Data Preperation
 Again, we use a dplyr chain to create a table that summarizes the number of steps, only this time, showing the mean for each interval rather than sum of steps per each unique date
-```{r}
+
+```r
 meanStepsByInterval <- summarize(group_by(filter(rawData, !is.na(steps)), interval), steps = mean(steps))
 ```
 
 ### Analysis Methods and Results
 We then plot using ggplot2
-```{r}
+
+```r
 ggplot(meanStepsByInterval, aes(x=interval, y=steps)) + geom_line(col="red") +  labs(title = "Mean steps per interval", x = "Interval", y = "Mean Steps")
 ```
 
+![](PA1_Template_files/figure-html/unnamed-chunk-7-1.png) 
+
 And determine that interval 835 contains the maximum number of steps (~206) with a simple dplyr filter
-```{r}
+
+```r
 filter(meanStepsByInterval, steps == max(steps))
+```
+
+```
+## Source: local data table [1 x 2]
+## 
+##   interval    steps
+##      (int)    (dbl)
+## 1      835 206.1698
 ```
 
 Upon looking at this graph, we see that earlier in the day, the number of steps peaks sharply indicating perhaps a regular exercise routine, walking commute, or daily professional activity that involves a lot of steps.
@@ -106,14 +126,21 @@ In this analysis, we repeat analysis 1, but subsitute numeric values where NA va
 
 ###Data Preparation
 First we check where the NA values are and how many there are with a dplyr chain.  We see that NA values only exist in the "steps" column at a count of 2304.
-```{r}
+
+```r
 summarize(rawData, NAsteps=sum(is.na(steps)), NAdate=sum(is.na(date)),
           NAinterval=sum(is.na(interval)))
 ```
 
+```
+##    NAsteps NAdate NAinterval
+## 1:    2304      0          0
+```
+
 With this knowledge, we create a new table to store data without NA values and implement our chosen strategy (replacing NA values with the mean number of steps for that interval) for filling in those values using a for loop and then take the sum of the steps per day using a dplyr chain.
 
-```{r}
+
+```r
 cleanedData <- rawData
 for (i in 1:length(cleanedData$steps)) { 
         if (is.na((cleanedData[i,][[1]]))) cleanedData[i,][[1]] = meanStepsByInterval[meanStepsByInterval$interval == cleanedData[i,][[3]],][[2]]
@@ -123,20 +150,36 @@ cleanedDataStepsSum <- summarize(group_by(cleanedData, date), steps = sum(steps)
 
 ### Analysis Methods and Results
 Afterwards, we use a simple ggplot2 historgram to plot the results 
-```{r}
+
+```r
 ggplot(cleanedDataStepsSum, aes(x=steps)) + geom_histogram(col="red", binwidth=1000) +  labs(title = "Steps per day", x = "Steps (Binwidth = 1000)", y = "Count")
 ```
 
+![](PA1_Template_files/figure-html/unnamed-chunk-11-1.png) 
+
 We also examine the new mean and median (which we store in our stepStatistics dataframe)
 
-```{r}
+
+```r
 stepStatistics <- rbind(stepStatistics, list(mean(cleanedDataStepsSum$steps), mean(cleanedDataStepsSum$steps), "Step Mean Substituted"))
 stepStatistics[2,]
 ```
 
+```
+##        mean   median         NAValueMethod
+## 1: 10766.19 10766.19 Step Mean Substituted
+```
+
 We see that our histogram varies very little from the original histogram, indicating  removing NA values introduces very little bias.  Additionally comparing the mean and median of the subsituted data with the original NA-valued data, shows very little deviation from the mean and median originally computed.
-```{r}
+
+```r
 stepStatistics
+```
+
+```
+##        mean   median         NAValueMethod
+## 1: 10766.19 10765.00               Removed
+## 2: 10766.19 10766.19 Step Mean Substituted
 ```
 
 # 4.  Analysis 4 - Investigation into activity differences on weekdays and weekends
@@ -146,7 +189,8 @@ In this analysis, we plot the steps taken per interval on both weekdays and week
 ### Data Preparation
 Using the data with substituted values, we create another column.  In this column we use lubridate to identify which day of the week each date is and then classify those data as either weekends or weekdays and cast them into factor variables.  Finally we use a dplyr chain to create a 3 column data table that shows the mean number of steps per interval both for weekdays AND weekends.
 
-```{r}
+
+```r
 cleanedData$week_portion = cleanedData$date
 cleanedData$week_portion[wday(cleanedData$date) %in% c(1,7)] <- "Weekend"; cleanedData$week_portion[wday(cleanedData$date) %in% c(2,3,4,5,6)] <- "Weekday"
 cleanedData$week_portion<-as.factor(cleanedData$week_portion)
@@ -155,10 +199,13 @@ Sumbyweekportion <- summarize(group_by(cleanedData, interval, week_portion), ste
 
 ### Analysis Methods and Results
 We use ggplot to plot the comparison of steps taken per intervals on weekends and weekdays
-```{r}
+
+```r
 ggplot(Sumbyweekportion, aes(x=interval, y=steps, color = week_portion)) +
     geom_line() +
     facet_wrap(~week_portion, ncol = 1, nrow=2)
 ```
+
+![](PA1_Template_files/figure-html/unnamed-chunk-15-1.png) 
 
 What we see immediately is that there is a CLEAR difference between weekday and weekend activity for this individual.  Their weekdays appear far more active.
